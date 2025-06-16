@@ -1,11 +1,13 @@
 import * as express from "express" ; 
+import * as  bcrypt from 'bcrypt' ; 
 import * as jwt from "jsonwebtoken" 
 import  { userModel } from "./schema/user.schema.js" ; 
-import { contentModel } from "./schema/content.schema.ts";
+import { contentModel } from "./schema/content.schema";
 import connectDB from "./db"
 import { userMiddleware } from "./middleware/auth.middleware.js";
 import * as mongoose from 'mongoose' 
-require("dotenv").config() ; 
+import * as dotenv from "dotenv";
+dotenv.config();
 
 const app = express() ; 
 app.use(express.json()) ; 
@@ -19,12 +21,20 @@ app.get("/" , (req, res)=>{
 app.post("/api/v1/signin",   async (req,res)=>{
     const { password, username } = req.body ; 
     try { 
+
         const existingUser = await userModel.findOne({
-            username , 
-            password , 
+            username 
         }) ; 
         
         if(existingUser) { 
+            const isPasswordValid = bcrypt.compare(password , existingUser.password) ; 
+
+            if(!isPasswordValid) { 
+                res.json({
+                    message : "Incorrect Password Entered! Please try again ! "
+                }).status(501) ; 
+            }
+
             const token = jwt.sign({
                 id : existingUser._id, 
             }, `${process.env.JWT_TOKEN_SECRET}`) ; 
@@ -49,10 +59,13 @@ app.post("/api/v1/signin",   async (req,res)=>{
 app.post("/api/v1/signup", async  (req, res)=>{
     const { username } = req.body ; 
     const { password } = req.body ; 
+  
+
     try { 
+        const hashedPassword = await bcrypt.hash(password , 10) ; 
         await userModel.create({
-            username , 
-            password   , 
+            username : username , 
+            password : hashedPassword  , 
         })
 
         res.json({
