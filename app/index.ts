@@ -7,6 +7,8 @@ import connectDB from "./db"
 import { userMiddleware } from "./middleware/auth.middleware.js";
 import * as mongoose from 'mongoose' 
 import * as dotenv from "dotenv";
+import * as zod from 'zod' ; 
+import signUpZodSchema from "./zod_schema/signUp.zod";
 dotenv.config();
 
 const app = express() ; 
@@ -19,9 +21,10 @@ app.get("/" , (req, res)=>{
 })
 
 app.post("/api/v1/signin",   async (req,res)=>{
-    const { password, username } = req.body ; 
+    const { username , password }  = req.body ; 
     try { 
-
+        const validateInputData = signUpZodSchema.parse(req.body) ; 
+        const { username , password } = validateInputData ; 
         const existingUser = await userModel.findOne({
             username 
         }) ; 
@@ -48,6 +51,11 @@ app.post("/api/v1/signin",   async (req,res)=>{
             }).status(403)
         }
     }catch(e) { 
+        if (e instanceof zod.ZodError)  { 
+            res.json({
+                message : e.message ,
+            })
+        }
         console.log("Error occurred while finding the user") ; 
         res.json({
             message : "Error occurred while finding the user" 
@@ -57,11 +65,13 @@ app.post("/api/v1/signin",   async (req,res)=>{
 } )
 
 app.post("/api/v1/signup", async  (req, res)=>{
-    const { username } = req.body ; 
-    const { password } = req.body ; 
+    
   
 
-    try { 
+    try {
+        const validateInputData = signUpZodSchema.parse(req.body); 
+        const { username , password } = validateInputData ; 
+        
         const hashedPassword = await bcrypt.hash(password , 10) ; 
         await userModel.create({
             username : username , 
@@ -75,6 +85,11 @@ app.post("/api/v1/signup", async  (req, res)=>{
         console.log("user created successfully ! ") ; 
     } 
     catch(e) { 
+        if (e instanceof zod.ZodError)  { 
+            res.json({
+                message : e.message ,
+            })
+        }
         res.json({
             message : `Error occurred while creating user `
         }).status(501) ;  
